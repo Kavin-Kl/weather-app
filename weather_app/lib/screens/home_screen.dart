@@ -12,8 +12,11 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         systemOverlayStyle:
-            const SystemUiOverlayStyle(statusBarBrightness: Brightness.dark),
+            const SystemUiOverlayStyle(
+              statusBarBrightness: Brightness.dark
+              ),
       ),
+      body: ,
     );
   }
 }

@@ -3,7 +3,7 @@ import '../data/news_api_service.dart';
 import '../domain/news_repository.dart';
 import '../../../core/providers.dart';
 
-const String newsApiKey = 'YOUR_NEWSAPI_KEY'; // Replace with your API key
+const String newsApiKey = 'bcdcdec9526646248c2e7aac21a82557';
 
 final newsApiServiceProvider = Provider<NewsApiService>((ref) {
   final dio = ref.watch(dioProvider);

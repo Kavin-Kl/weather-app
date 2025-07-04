@@ -3,8 +3,7 @@ import '../data/weather_api_service.dart';
 import '../domain/weather_repository.dart';
 import '../../../core/providers.dart';
 
-const String openWeatherApiKey =
-    'YOUR_OPENWEATHER_API_KEY'; // Replace with your API key
+const String openWeatherApiKey = '7fb9eb43733b49b903255b3c196009b2';
 
 final weatherApiServiceProvider = Provider<WeatherApiService>((ref) {
   final dio = ref.watch(dioProvider);

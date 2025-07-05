@@ -7,6 +7,9 @@ class WeatherState extends Equatable {
   final Map<String, dynamic>? airPollution; // Data from Air Pollution API
   final bool isLoading;
   final String? error;
+  final String? cityName;
+  final String? stateName;
+  final String? countryName;
 
   const WeatherState({
     this.currentWeather,
@@ -15,6 +18,9 @@ class WeatherState extends Equatable {
     this.airPollution,
     this.isLoading = false,
     this.error,
+    this.cityName,
+    this.stateName,
+    this.countryName,
   });
 
   WeatherState copyWith({
@@ -24,6 +30,9 @@ class WeatherState extends Equatable {
     Map<String, dynamic>? airPollution,
     bool? isLoading,
     String? error,
+    String? cityName,
+    String? stateName,
+    String? countryName,
   }) {
     return WeatherState(
       currentWeather: currentWeather ?? this.currentWeather,
@@ -32,6 +41,9 @@ class WeatherState extends Equatable {
       airPollution: airPollution ?? this.airPollution,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
+      cityName: cityName ?? this.cityName,
+      stateName: stateName ?? this.stateName,
+      countryName: countryName ?? this.countryName,
     );
   }
 
@@ -42,6 +54,9 @@ class WeatherState extends Equatable {
         detailedWeather,
         airPollution,
         isLoading,
-        error
+        error,
+        cityName,
+        stateName,
+        countryName,
       ];
 }

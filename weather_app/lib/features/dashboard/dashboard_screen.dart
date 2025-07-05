@@ -129,7 +129,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     // Get current city and date for AppBar
-    final currentCity = weatherState.currentWeather?['name'] ?? 'City';
+    final currentCity = weatherState.cityName ??
+        weatherState.stateName ??
+        weatherState.countryName ??
+        'City';
     final currentDate = DateFormat('MMM dd').format(DateTime.now());
 
     return Scaffold(
@@ -173,14 +176,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 const Icon(Icons.location_on, color: Colors.white70, size: 18),
                 const SizedBox(width: 4),
+                // Only show the most specific available location (city, then state, then country)
                 Text(
-                  // Show city and country if available, fallback to 'Unknown'
-                  (weatherState.currentWeather?['name'] ?? 'Unknown') +
-                      (weatherState.currentWeather?['sys'] != null &&
-                              weatherState.currentWeather?['sys']['country'] !=
-                                  null
-                          ? ', ${weatherState.currentWeather?['sys']['country']}'
-                          : ''),
+                  weatherState.cityName?.isNotEmpty == true
+                      ? weatherState.cityName!
+                      : (weatherState.stateName?.isNotEmpty == true
+                          ? weatherState.stateName!
+                          : (weatherState.countryName?.isNotEmpty == true
+                              ? weatherState.countryName!
+                              : 'Unknown')),
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
@@ -340,56 +344,59 @@ class _WeatherSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final current = weatherState.detailedWeather?['current'];
-    final hourly = weatherState.detailedWeather?['hourly'] as List<dynamic>?;
+    final daily = weatherState.detailedWeather?['daily'];
+    final hourly = weatherState.forecast?['hourly'];
+    final current = weatherState.currentWeather?['current'];
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       children: [
         // Top section with City and Date is now in AppBar
-        const SizedBox(height: 16), // Add some space below AppBar
+        const SizedBox(height: 16),
         // Main Temperature Display
         Center(
           child: Column(
             children: [
               Text(
-                '${current != null && current['temp'] != null ? current['temp'].toStringAsFixed(0) : '--'}°C',
+                // Open-Meteo: current temp is current['temperature_2m']
+                '${current != null && current['temperature_2m'] != null ? current['temperature_2m'].round() : '--'}°C',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 100,
                     fontWeight: FontWeight.w300),
               ),
               Text(
-                current?['weather'] != null &&
-                        current['weather'] is List &&
-                        current['weather'].isNotEmpty
-                    ? current['weather'][0]['description']
-                            ?.toString()
-                            .toUpperCase() ??
-                        ''
+                // Open-Meteo: current weather code (map to description if needed)
+                current?['weather_code'] != null
+                    ? 'Code: ${current['weather_code']}'
                     : 'MOSTLY CLOUDY',
                 style: const TextStyle(color: Colors.white70, fontSize: 20),
               ),
               const SizedBox(height: 16),
-              // Min/Max Temperature
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_downward,
-                      color: Colors.white70, size: 18),
-                  Text(
-                    ' ${current != null && current['temp_min'] != null ? current['temp_min'].toStringAsFixed(0) : '--'}°',
-                    style: const TextStyle(color: Colors.white70, fontSize: 18),
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.arrow_upward,
-                      color: Colors.white70, size: 18),
-                  Text(
-                    ' ${current != null && current['temp_max'] != null ? current['temp_max'].toStringAsFixed(0) : '--'}°',
-                    style: const TextStyle(color: Colors.white70, fontSize: 18),
-                  ),
-                ],
-              ),
+              // Min/Max Temperature (not available in current, so skip or use daily[0])
+              if (daily != null &&
+                  daily['temperature_2m_min'] != null &&
+                  daily['temperature_2m_max'] != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.arrow_downward,
+                        color: Colors.white70, size: 18),
+                    Text(
+                      ' ${daily['temperature_2m_min'][0]?.round() ?? '--'}°',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 18),
+                    ),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.arrow_upward,
+                        color: Colors.white70, size: 18),
+                    Text(
+                      ' ${daily['temperature_2m_max'][0]?.round() ?? '--'}°',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 18),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -398,18 +405,24 @@ class _WeatherSection extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white
-                .withOpacity(0.08), // Translucent background for the card
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(24),
           ),
-          child: const Row(
-            // Using const for efficiency since children are const
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _WeatherDetailItem(
-                  Icons.waves, '12 km/h', 'Wind'), // Example values
-              _WeatherDetailItem(Icons.wb_sunny_outlined, 'UV12', 'UV Index'),
-              _WeatherDetailItem(Icons.water_drop, '80%', 'Humidity'),
+                  Icons.waves,
+                  current?['wind_speed_10m'] != null
+                      ? current['wind_speed_10m'].toString() + ' km/h'
+                      : '--',
+                  'Wind'),
+              _WeatherDetailItem(Icons.wb_sunny_outlined,
+                  daily?['uv_index_max']?[0]?.toString() ?? '--', 'UV Index'),
+              _WeatherDetailItem(
+                  Icons.water_drop,
+                  current?['relative_humidity_2m']?.toString() ?? '--',
+                  'Humidity'),
             ],
           ),
         ),
@@ -421,30 +434,29 @@ class _WeatherSection extends StatelessWidget {
               color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        // Hourly Forecast List
-        if (hourly != null && hourly.isNotEmpty)
+        if (hourly != null &&
+            hourly['time'] != null &&
+            (hourly['time'] as List).isNotEmpty)
           SizedBox(
-            height: 120, // Height for the horizontal list of hourly cards
+            height: 120,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount:
-                  hourly.length < 8 ? hourly.length : 8, // Display next 8 hours
+              itemCount: (hourly['time'] as List).length < 8
+                  ? (hourly['time'] as List).length
+                  : 8,
               itemBuilder: (context, index) {
-                final h = hourly[index];
-                final dt =
-                    DateTime.fromMillisecondsSinceEpoch((h['dt'] ?? 0) * 1000);
-                final hour = DateFormat('ha').format(dt);
+                final hour = DateFormat('ha')
+                    .format(DateTime.parse(hourly['time'][index]));
                 final temp =
-                    h['temp'] != null ? h['temp'].toStringAsFixed(0) : '--';
+                    hourly['temperature_2m']?[index]?.round().toString() ??
+                        '--';
                 return Container(
-                  width: 80, // Width of each hourly card
+                  width: 80,
                   margin: const EdgeInsets.only(right: 16),
                   decoration: BoxDecoration(
-                    color:
-                        Colors.white.withOpacity(0.1), // Translucent background
+                    color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.2)), // Subtle border
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -453,11 +465,7 @@ class _WeatherSection extends StatelessWidget {
                           style: const TextStyle(
                               color: Colors.white, fontSize: 15)),
                       const SizedBox(height: 8),
-                      _getWeatherIcon(
-                          h['weather'] != null && h['weather'].isNotEmpty
-                              ? h['weather'][0]['icon']
-                              : null),
-                      const SizedBox(height: 8),
+                      // You can use a weather icon based on hourly['weather_code']?[index]
                       Text('$temp°',
                           style: const TextStyle(
                               color: Colors.white,
@@ -469,16 +477,68 @@ class _WeatherSection extends StatelessWidget {
               },
             ),
           ),
+        // 7-Day Forecast title
+        const SizedBox(height: 32),
+        const Text(
+          '7-Day Forecast',
+          style: TextStyle(
+              color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        if (daily != null &&
+            daily['time'] != null &&
+            (daily['time'] as List).isNotEmpty)
+          SizedBox(
+            height: 140,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: (daily['time'] as List).length < 7
+                  ? (daily['time'] as List).length
+                  : 7,
+              itemBuilder: (context, index) {
+                final day = DateFormat('EEE')
+                    .format(DateTime.parse(daily['time'][index]));
+                final tempMin =
+                    daily['temperature_2m_min']?[index]?.round().toString() ??
+                        '--';
+                final tempMax =
+                    daily['temperature_2m_max']?[index]?.round().toString() ??
+                        '--';
+                return Container(
+                  width: 100,
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(day,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      // You can use a weather icon based on daily['weather_code']?[index]
+                      Text('$tempMax° / $tempMin°',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
-
-  // Helper widget for individual weather detail items
-  // Made into a separate StatelessWidget for better readability and reusability
-  // and marked as `const` for compile-time optimization.
 }
 
-// Separate stateless widget for weather detail items for reusability
+// Helper widget for individual weather detail items
+// Made into a separate StatelessWidget for better readability and reusability
+// and marked as `const` for compile-time optimization.
 class _WeatherDetailItem extends StatelessWidget {
   final IconData icon;
   final String value;

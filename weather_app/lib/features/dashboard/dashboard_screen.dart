@@ -562,6 +562,16 @@ class _NewsSection extends StatelessWidget {
     final featured = articles.isNotEmpty ? articles.first : null;
     final rest = articles.length > 1 ? articles.sublist(1) : [];
 
+    // Show error if present
+    if (newsState.error != null && newsState.error.isNotEmpty) {
+      return Center(
+        child: Text(
+          'Error: ' + newsState.error,
+          style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       children: [
